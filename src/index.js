@@ -6,11 +6,34 @@ import { loadConfig } from './config.js';
 import { formatTrackingDate } from './date-format.js';
 
 const lockFilePath = path.join(os.tmpdir(), 'discord-report-tracker.lock');
-const config = loadConfig();
 const manilaTimeZone = 'Asia/Manila';
 const cutoffHour = 18;
 const cutoffMinute = 0;
 const checkedDateKeys = new Set();
+
+function logError(context, error) {
+  console.error(`[${context}]`, error);
+}
+
+process.on('unhandledRejection', (reason) => {
+  logError('process/unhandledRejection', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  logError('process/uncaughtException', error);
+});
+
+process.on('warning', (warning) => {
+  console.warn(`[process/warning] ${warning.name}: ${warning.message}`);
+});
+
+let config;
+try {
+  config = loadConfig();
+} catch (error) {
+  logError('startup/loadConfig', error);
+  process.exit(1);
+}
 
 const client = new Client({
   intents: [
@@ -360,26 +383,38 @@ client.once(Events.ClientReady, (readyClient) => {
   scheduleDailyNotPassCheck();
 });
 
+client.on(Events.Error, (error) => {
+  logError('discord/clientError', error);
+});
+
+client.on(Events.ShardError, (error, shardId) => {
+  logError(`discord/shardError:${shardId}`, error);
+});
+
 client.on(Events.MessageCreate, async (message) => {
-  if (message.author.bot) {
-    return;
+  try {
+    if (message.author.bot) {
+      return;
+    }
+
+    if (message.channelId !== config.reportChannelId) {
+      return;
+    }
+
+    const trackingChannel = await client.channels.fetch(config.trackingChannelId);
+
+    if (!trackingChannel || !trackingChannel.isTextBased()) {
+      console.warn(`Tracking channel ${config.trackingChannelId} is not available.`);
+      return;
+    }
+
+    const senderName = message.member?.displayName ?? message.author.globalName ?? message.author.username;
+    const trackingDate = formatTrackingDate(message.createdAt);
+
+    await trackingChannel.send(`${trackingDate} | ${senderName} | Accomplishment`);
+  } catch (error) {
+    logError('discord/messageCreate', error);
   }
-
-  if (message.channelId !== config.reportChannelId) {
-    return;
-  }
-
-  const trackingChannel = await client.channels.fetch(config.trackingChannelId);
-
-  if (!trackingChannel || !trackingChannel.isTextBased()) {
-    console.warn(`Tracking channel ${config.trackingChannelId} is not available.`);
-    return;
-  }
-
-  const senderName = message.member?.displayName ?? message.author.globalName ?? message.author.username;
-  const trackingDate = formatTrackingDate(message.createdAt);
-
-  await trackingChannel.send(`${trackingDate} | ${senderName} | Accomplishment`);
 });
 
 client.login(config.token).catch((error) => {
