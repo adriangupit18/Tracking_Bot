@@ -7,6 +7,17 @@ const requiredEnvironmentVariables = [
   'NOT_PASS_CHANNEL_ID',
 ];
 
+function parseTrackedMemberIds(value) {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 export function loadConfig() {
   const missingVariables = requiredEnvironmentVariables.filter((name) => !process.env[name]);
 
@@ -19,5 +30,6 @@ export function loadConfig() {
     reportChannelId: process.env.REPORT_CHANNEL_ID,
     trackingChannelId: process.env.TRACKING_CHANNEL_ID,
     notPassChannelId: process.env.NOT_PASS_CHANNEL_ID,
+    trackedMemberIds: parseTrackedMemberIds(process.env.TRACKED_MEMBER_IDS),
   };
 }

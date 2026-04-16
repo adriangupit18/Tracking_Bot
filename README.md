@@ -24,6 +24,7 @@ This bot watches the accomplishment report channel and posts a minimal tracking 
 - `REPORT_CHANNEL_ID` - the channel where accomplishment reports are posted.
 - `TRACKING_CHANNEL_ID` - the channel where tracking entries are written.
 - `NOT_PASS_CHANNEL_ID` - the channel where not-pass entries are written at 6:00 PM Manila time.
+- `TRACKED_MEMBER_IDS` - optional comma-separated Discord user IDs to limit not-pass checks to specific members (for example, your 7 expected members).
 
 ## Run
 

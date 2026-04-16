@@ -292,9 +292,14 @@ async function runDailyNotPassCheck() {
 
   const submitterIds = await collectSubmitterIdsForDate(reportChannel, todayKey);
   const members = await getEligibleMembers(reportChannel);
+  const trackedMemberIdSet = new Set(config.trackedMemberIds);
 
   const eligibleMembers = members.filter((member) => {
     if (member.user.bot) {
+      return false;
+    }
+
+    if (trackedMemberIdSet.size > 0 && !trackedMemberIdSet.has(member.id)) {
       return false;
     }
 
