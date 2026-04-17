@@ -334,27 +334,46 @@ async function runDailyNotPassCheck() {
 
   const submitterIds = await collectSubmitterIdsForDate(reportChannel, todayKey);
   const members = await getEligibleMembers(reportChannel);
-  const trackedMemberIdSet = new Set(config.trackedMemberIds);
+  const trackedMemberIdSet = new Set(config.trackedMemberIds.map((id) => String(id).trim()));
+
+  console.log(
+    `[notPassCheck] Tracked member IDs (${trackedMemberIdSet.size}): ${[...trackedMemberIdSet].join(', ') || '(none — all eligible members will be checked)'}`,
+  );
 
   const eligibleMembers = members.filter((member) => {
     if (member.user.bot) {
       return false;
     }
 
-    if (trackedMemberIdSet.size > 0 && !trackedMemberIdSet.has(member.id)) {
-      return false;
+    const memberId = String(member.id);
+
+    if (trackedMemberIdSet.size > 0) {
+      const isTracked = trackedMemberIdSet.has(memberId);
+      console.log(`[notPassCheck] Member ${memberId} (${member.displayName}): tracked=${isTracked}`);
+      if (!isTracked) {
+        return false;
+      }
     }
 
     const permissions = reportChannel.permissionsFor(member);
     if (!permissions) {
+      console.log(`[notPassCheck] Member ${memberId} (${member.displayName}): no permissions object, skipping`);
       return false;
     }
 
-    return permissions.has(PermissionsBitField.Flags.ViewChannel) && permissions.has(PermissionsBitField.Flags.SendMessages);
+    const canView = permissions.has(PermissionsBitField.Flags.ViewChannel);
+    const canSend = permissions.has(PermissionsBitField.Flags.SendMessages);
+    console.log(`[notPassCheck] Member ${memberId} (${member.displayName}): canView=${canView} canSend=${canSend}`);
+
+    return canView && canSend;
   });
 
+  console.log(
+    `[notPassCheck] Eligible members (${eligibleMembers.length}): ${eligibleMembers.map((m) => `${m.displayName}(${m.id})`).join(', ')}`,
+  );
+
   const missingMembers = [...eligibleMembers.values()]
-    .filter((member) => !submitterIds.has(member.id))
+    .filter((member) => !submitterIds.has(String(member.id)))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 
   if (missingMembers.length === 0) {
