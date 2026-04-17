@@ -7,8 +7,8 @@ import { formatTrackingDate } from './date-format.js';
 
 const lockFilePath = path.join(os.tmpdir(), 'discord-report-tracker.lock');
 const manilaTimeZone = 'Asia/Manila';
-const cutoffHour = 18;
-const cutoffMinute = 0;
+const cutoffHour = 8;
+const cutoffMinute = 20;
 const checkedDateKeys = new Set();
 
 function logError(context, error) {
