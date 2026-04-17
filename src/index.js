@@ -8,7 +8,7 @@ import { formatTrackingDate } from './date-format.js';
 const lockFilePath = path.join(os.tmpdir(), 'discord-report-tracker.lock');
 const manilaTimeZone = 'Asia/Manila';
 const cutoffHour = 8;
-const cutoffMinute = 30;
+const cutoffMinute = 32;
 const checkedDateKeys = new Set();
 const manilaDateFormatter = new Intl.DateTimeFormat('en-GB', {
   timeZone: manilaTimeZone,
