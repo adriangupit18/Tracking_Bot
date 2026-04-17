@@ -8,8 +8,14 @@ import { formatTrackingDate } from './date-format.js';
 const lockFilePath = path.join(os.tmpdir(), 'discord-report-tracker.lock');
 const manilaTimeZone = 'Asia/Manila';
 const cutoffHour = 8;
-const cutoffMinute = 20;
+const cutoffMinute = 30;
 const checkedDateKeys = new Set();
+const manilaDateFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: manilaTimeZone,
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
 
 function logError(context, error) {
   console.error(`[${context}]`, error);
@@ -33,6 +39,22 @@ try {
 } catch (error) {
   logError('startup/loadConfig', error);
   process.exit(1);
+}
+
+console.log(
+  [
+    'Configuration loaded:',
+    `REPORT_CHANNEL_ID=${config.reportChannelId}`,
+    `TRACKING_CHANNEL_ID=${config.trackingChannelId}`,
+    `NOT_PASS_CHANNEL_ID=${config.notPassChannelId}`,
+    `TRACKED_MEMBER_IDS_COUNT=${config.trackedMemberIds.length}`,
+  ].join(' '),
+);
+
+if (config.trackedMemberIds.length === 0) {
+  console.warn(
+    'TRACKED_MEMBER_IDS is empty. Not-pass checks will include all eligible non-bot members. Set TRACKED_MEMBER_IDS in Railway Variables if you want a fixed list.',
+  );
 }
 
 const client = new Client({
@@ -150,10 +172,7 @@ function getManilaDateKey(date) {
 }
 
 function formatManilaDate(date) {
-  return new Intl.DateTimeFormat('en-GB', {
-    dateStyle: 'medium',
-    timeZone: manilaTimeZone,
-  }).format(date);
+  return manilaDateFormatter.format(date);
 }
 
 function isBeforeCutoffInManila(date) {
