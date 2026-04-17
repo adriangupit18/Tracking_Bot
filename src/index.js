@@ -290,14 +290,9 @@ async function getEligibleMembers(reportChannel) {
     return [...members.values()];
   } catch (error) {
     if (error?.code === 'GuildMembersTimeout') {
-      const cachedMembers = [...reportChannel.guild.members.cache.values()];
-
-      if (cachedMembers.length > 0) {
-        console.warn(
-          `Guild member fetch timed out for ${reportChannel.guild.name}; falling back to ${cachedMembers.length} cached members.`,
-        );
-        return cachedMembers;
-      }
+      throw new Error(
+        `Unable to fetch the full member list for ${reportChannel.guild.name}. Enable the Server Members intent in the Discord Developer Portal and redeploy so the not-pass list stays accurate.`,
+      );
     }
 
     throw error;

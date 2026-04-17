@@ -15,7 +15,7 @@ This bot watches the accomplishment report channel and posts a minimal tracking 
 1. Install Node.js 18 or newer.
 2. Run `npm install`.
 3. Copy `.env.example` to `.env` and add your Discord bot token.
-4. In the Discord Developer Portal, enable the Message Content intent for the bot.
+4. In the Discord Developer Portal, enable the Message Content intent and the Server Members intent for the bot.
 5. Invite the bot to your server with permission to read and send messages in all configured channels.
 
 ## Environment variables
@@ -37,3 +37,4 @@ npm start
 - Railway does not read your local `.env` file from GitHub automatically.
 - Set all variables in Railway Variables: `DISCORD_TOKEN`, `REPORT_CHANNEL_ID`, `TRACKING_CHANNEL_ID`, `NOT_PASS_CHANNEL_ID`, and optional `TRACKED_MEMBER_IDS`.
 - If `TRACKED_MEMBER_IDS` is empty in Railway, the bot will evaluate all eligible non-bot members in the server.
+- Make sure the bot has the Server Members intent enabled in the Discord Developer Portal; otherwise the not-pass check can be incomplete in deployed environments.
