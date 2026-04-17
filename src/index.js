@@ -51,12 +51,6 @@ console.log(
   ].join(' '),
 );
 
-if (config.trackedMemberIds.length === 0) {
-  console.warn(
-    'TRACKED_MEMBER_IDS is empty. Not-pass checks will include all eligible non-bot members. Set TRACKED_MEMBER_IDS in Railway Variables if you want a fixed list.',
-  );
-}
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
