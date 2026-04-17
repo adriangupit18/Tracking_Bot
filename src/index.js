@@ -6,12 +6,12 @@ import { loadConfig } from './config.js';
 import { formatTrackingDate } from './date-format.js';
 
 const lockFilePath = path.join(os.tmpdir(), 'discord-report-tracker.lock');
-const manilaTimeZone = 'Asia/Manila';
-const cutoffHour = 8;
-const cutoffMinute = 59;
+const utcPlus8TimeZone = 'Etc/GMT-8';
+const cutoffHour = 9;
+const cutoffMinute = 12;
 const checkedDateKeys = new Set();
-const manilaDateFormatter = new Intl.DateTimeFormat('en-GB', {
-  timeZone: manilaTimeZone,
+const utcPlus8DateFormatter = new Intl.DateTimeFormat('en-GB', {
+  timeZone: utcPlus8TimeZone,
   day: '2-digit',
   month: 'short',
   year: 'numeric',
@@ -141,9 +141,9 @@ if (!acquireProcessLock()) {
   process.exit(1);
 }
 
-function getManilaDateTimeParts(date) {
+function getUtcPlus8DateTimeParts(date) {
   const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: manilaTimeZone,
+    timeZone: utcPlus8TimeZone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -166,40 +166,40 @@ function getManilaDateTimeParts(date) {
   };
 }
 
-function getManilaDateKey(date) {
-  const { year, month, day } = getManilaDateTimeParts(date);
+function getUtcPlus8DateKey(date) {
+  const { year, month, day } = getUtcPlus8DateTimeParts(date);
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function formatManilaDate(date) {
-  return manilaDateFormatter.format(date);
+function formatUtcPlus8Date(date) {
+  return utcPlus8DateFormatter.format(date);
 }
 
-function isBeforeCutoffInManila(date) {
-  const { hour, minute } = getManilaDateTimeParts(date);
+function isBeforeCutoffInUtcPlus8(date) {
+  const { hour, minute } = getUtcPlus8DateTimeParts(date);
   return hour < cutoffHour || (hour === cutoffHour && minute < cutoffMinute);
 }
 
-function isAtOrAfterCutoffInManila(date) {
-  const { hour, minute } = getManilaDateTimeParts(date);
+function isAtOrAfterCutoffInUtcPlus8(date) {
+  const { hour, minute } = getUtcPlus8DateTimeParts(date);
   return hour > cutoffHour || (hour === cutoffHour && minute >= cutoffMinute);
 }
 
 function getDelayUntilNextCutoffMs(now = new Date()) {
-  const manilaNow = getManilaDateTimeParts(now);
+  const utcPlus8Now = getUtcPlus8DateTimeParts(now);
   const nowWall = Date.UTC(
-    manilaNow.year,
-    manilaNow.month - 1,
-    manilaNow.day,
-    manilaNow.hour,
-    manilaNow.minute,
-    manilaNow.second,
+    utcPlus8Now.year,
+    utcPlus8Now.month - 1,
+    utcPlus8Now.day,
+    utcPlus8Now.hour,
+    utcPlus8Now.minute,
+    utcPlus8Now.second,
     now.getMilliseconds(),
   );
 
-  let targetWall = Date.UTC(manilaNow.year, manilaNow.month - 1, manilaNow.day, cutoffHour, cutoffMinute, 0, 0);
+  let targetWall = Date.UTC(utcPlus8Now.year, utcPlus8Now.month - 1, utcPlus8Now.day, cutoffHour, cutoffMinute, 0, 0);
 
-  if (isAtOrAfterCutoffInManila(now)) {
+  if (isAtOrAfterCutoffInUtcPlus8(now)) {
     targetWall += 24 * 60 * 60 * 1000;
   }
 
@@ -229,9 +229,9 @@ async function collectSubmitterIdsForDate(reportChannel, dateKey) {
         continue;
       }
 
-      const messageDateKey = getManilaDateKey(message.createdAt);
+      const messageDateKey = getUtcPlus8DateKey(message.createdAt);
 
-      if (messageDateKey === dateKey && isBeforeCutoffInManila(message.createdAt)) {
+      if (messageDateKey === dateKey && isBeforeCutoffInUtcPlus8(message.createdAt)) {
         submitterIds.add(message.author.id);
       }
 
@@ -301,8 +301,8 @@ async function getEligibleMembers(reportChannel) {
 
 async function runDailyNotPassCheck() {
   const now = new Date();
-  const todayKey = getManilaDateKey(now);
-  const dateLabel = formatManilaDate(now);
+  const todayKey = getUtcPlus8DateKey(now);
+  const dateLabel = formatUtcPlus8Date(now);
 
   if (checkedDateKeys.has(todayKey)) {
     return;
@@ -407,7 +407,7 @@ function scheduleDailyNotPassCheck() {
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}`);
 
-  if (isAtOrAfterCutoffInManila(new Date())) {
+  if (isAtOrAfterCutoffInUtcPlus8(new Date())) {
     runDailyNotPassCheck().catch((error) => {
       console.error('Failed running startup not-pass check:', error);
     });

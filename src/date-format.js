@@ -1,5 +1,5 @@
 const trackingDateFormatter = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Asia/Manila',
+  timeZone: 'Etc/GMT-8',
   day: '2-digit',
   month: 'short',
   year: 'numeric',

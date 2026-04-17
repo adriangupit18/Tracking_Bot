@@ -7,7 +7,7 @@ This bot watches the accomplishment report channel and posts a minimal tracking 
 - Listens for new messages in the report channel.
 - Ignores bot messages.
 - Posts the sender name and the message timestamp to the tracking channel.
-- At 8:20 AM Manila time, checks who did not submit in the report channel and posts `Date | Name | Not Pass` to a separate not-pass channel.
+- At 8:20 AM UTC+8, checks who did not submit in the report channel and posts `Date | Name | Not Pass` to a separate not-pass channel.
 - Uses the tracking channel as the log, so no database is required.
 
 ## Setup
@@ -23,7 +23,7 @@ This bot watches the accomplishment report channel and posts a minimal tracking 
 - `DISCORD_TOKEN` - the bot token.
 - `REPORT_CHANNEL_ID` - the channel where accomplishment reports are posted.
 - `TRACKING_CHANNEL_ID` - the channel where tracking entries are written.
-- `NOT_PASS_CHANNEL_ID` - the channel where not-pass entries are written at 8:20 AM Manila time.
+- `NOT_PASS_CHANNEL_ID` - the channel where not-pass entries are written at 8:20 AM UTC+8.
 - `TRACKED_MEMBER_IDS` - optional comma-separated Discord user IDs to limit not-pass checks to specific members (for example, your 7 expected members).
 
 ## Run
