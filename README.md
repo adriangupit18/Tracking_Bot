@@ -24,7 +24,7 @@ This bot watches the accomplishment report channel and posts a minimal tracking 
 - `REPORT_CHANNEL_ID` - the channel where accomplishment reports are posted.
 - `TRACKING_CHANNEL_ID` - the channel where tracking entries are written.
 - `NOT_PASS_CHANNEL_ID` - the channel where not-pass entries are written at 8:20 AM UTC+8.
-- `TRACKED_MEMBER_IDS` - required comma-separated Discord user IDs to limit not-pass checks to specific members (for example, your 7 expected members).
+- `TRACKED_MEMBER_IDS` - optional comma-separated Discord user IDs to limit not-pass checks to specific members (for example, your 7 expected members).
 
 ## Run
 
@@ -35,6 +35,6 @@ npm start
 ## Railway deployment note
 
 - Railway does not read your local `.env` file from GitHub automatically.
-- Set all variables in Railway Variables: `DISCORD_TOKEN`, `REPORT_CHANNEL_ID`, `TRACKING_CHANNEL_ID`, `NOT_PASS_CHANNEL_ID`, and `TRACKED_MEMBER_IDS`.
-- Keep `TRACKED_MEMBER_IDS` limited to the exact users you want checked so the not-pass list stays precise.
+- Set all variables in Railway Variables: `DISCORD_TOKEN`, `REPORT_CHANNEL_ID`, `TRACKING_CHANNEL_ID`, `NOT_PASS_CHANNEL_ID`, and optional `TRACKED_MEMBER_IDS`.
+- If `TRACKED_MEMBER_IDS` is empty in Railway, the bot will evaluate all eligible non-bot members in the server.
 - Make sure the bot has the Server Members intent enabled in the Discord Developer Portal; otherwise the not-pass check can be incomplete in deployed environments.
