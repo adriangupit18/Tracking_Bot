@@ -8,7 +8,7 @@ import { formatTrackingDate } from './date-format.js';
 const lockFilePath = path.join(os.tmpdir(), 'discord-report-tracker.lock');
 const utcPlus8TimeZone = 'Etc/GMT-8';
 const cutoffHour = 9;
-const cutoffMinute = 20;
+const cutoffMinute = 25;
 const checkedDateKeys = new Set();
 const utcPlus8DateFormatter = new Intl.DateTimeFormat('en-GB', {
   timeZone: utcPlus8TimeZone,
