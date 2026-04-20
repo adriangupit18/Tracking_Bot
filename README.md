@@ -7,7 +7,7 @@ This bot watches the accomplishment report channel and posts a minimal tracking 
 - Listens for new messages in the report channel.
 - Ignores bot messages.
 - Posts the sender name and the message timestamp to the tracking channel.
-- At 10:00 AM UTC+8 on weekdays (Monday to Friday), checks who did not submit in the report channel and posts `Date | Name | Not Pass` to a separate not-pass channel.
+- At 10:00 AM UTC+8 on weekdays (Monday to Friday), checks who did not submit in the report channel and posts `Date | Name | Not Submitted` to a separate not-pass channel.
 - Uses the tracking channel as the log, so no database is required.
 
 ## Setup

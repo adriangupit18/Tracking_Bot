@@ -286,7 +286,8 @@ async function isAlreadyPostedForDate(notPassChannel, dateLabel) {
   const recentMessages = await notPassChannel.messages.fetch({ limit: 100 });
 
   return recentMessages.some(
-    (message) => message.author.id === client.user.id && message.content.includes(`${dateLabel} |`) && message.content.includes('| Not Pass'),
+    (message) =>
+      message.author.id === client.user.id && message.content.includes(`${dateLabel} |`) && message.content.includes('| Not Submitted'),
   );
 }
 
@@ -389,7 +390,7 @@ async function runDailyNotPassCheck() {
     return;
   }
 
-  const lines = missingMembers.map((member) => `${dateLabel} | ${member.displayName} | Not Pass`);
+  const lines = missingMembers.map((member) => `${dateLabel} | ${member.displayName} | Not Submitted`);
 
   for (const message of splitLinesIntoMessages(lines)) {
     await notPassChannel.send(message);
