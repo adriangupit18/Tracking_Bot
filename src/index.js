@@ -171,6 +171,12 @@ function getUtcPlus8DateKey(date) {
   return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function isWeekendInUtcPlus8(date) {
+  const { year, month, day } = getUtcPlus8DateTimeParts(date);
+  const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  return dayOfWeek === 0 || dayOfWeek === 6;
+}
+
 function formatUtcPlus8Date(date) {
   return utcPlus8DateFormatter.format(date);
 }
@@ -303,6 +309,12 @@ async function runDailyNotPassCheck() {
   const now = new Date();
   const todayKey = getUtcPlus8DateKey(now);
   const dateLabel = formatUtcPlus8Date(now);
+
+  if (isWeekendInUtcPlus8(now)) {
+    checkedDateKeys.add(todayKey);
+    console.log(`Skipping not-pass check for weekend date ${todayKey}.`);
+    return;
+  }
 
   if (checkedDateKeys.has(todayKey)) {
     return;
