@@ -390,7 +390,7 @@ async function runDailyNotPassCheck() {
     return;
   }
 
-  const lines = missingMembers.map((member) => `${dateLabel} | ${member.displayName} | Not Submitted`);
+  const lines = missingMembers.map((member) => `${dateLabel} | ${member.displayName} | Not Submitted (MAHIYA KȦ NMN!!)`);
 
   for (const message of splitLinesIntoMessages(lines)) {
     await notPassChannel.send(message);
