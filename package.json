@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node api/interactions.js"
   },
   "dependencies": {
-    "discord.js": "^14.22.1",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "tweetnacl": "^1.0.3"
   }
 }

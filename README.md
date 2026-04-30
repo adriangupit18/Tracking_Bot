@@ -1,40 +1,107 @@
-# Discord Report Tracker
+# Discord Interactions Tracker
 
-This bot watches the accomplishment report channel and posts a minimal tracking entry into a second channel.
+This project now runs as a slash-command-only Discord interactions endpoint for Vercel.
 
 ## What it does
 
-- Listens for new messages in the report channel.
-- Ignores bot messages.
-- Posts the sender name and the message timestamp to the tracking channel.
-- At 10:00 AM UTC+8 on weekdays (Monday to Friday), checks who did not submit in the report channel and posts `Date | Name | Not Submitted (MAHIYA KȦ NMN!!)` to a separate not-pass channel.
-- Uses the tracking channel as the log, so no database is required.
+- Verifies Discord interaction signatures with ED25519.
+- Responds to `PING` with `type: 1`.
+- Handles `/submit`, `/track submitted`, and `/track missing`.
+- Stores submissions as `userId`, `username`, `date`, and `content`.
+- Blocks duplicate submissions from the same user on the same day.
+- Avoids `client.login()`, gateway events, and background schedulers.
 
-## Setup
+## Commands
+
+- `/submit content:<text>` saves the user's accomplishment and auto-fills the date from server time.
+- `/track submitted date:<YYYY-MM-DD>` lists every user who submitted on that date.
+- `/track missing date:<YYYY-MM-DD>` compares submissions against the fixed member list and lists the users who did not submit.
+
+## Deployment
 
 1. Install Node.js 18 or newer.
 2. Run `npm install`.
-3. Copy `.env.example` to `.env` and add your Discord bot token.
-4. In the Discord Developer Portal, enable the Message Content intent and the Server Members intent for the bot.
-5. Invite the bot to your server with permission to read and send messages in all configured channels.
+3. Deploy the repo to Vercel.
+4. Set the Discord interactions endpoint URL to `https://YOUR_PROJECT.vercel.app/api/interactions`.
+5. Register the slash commands in the Discord Developer Portal or through the Discord API using the schema below.
 
 ## Environment variables
 
-- `DISCORD_TOKEN` - the bot token.
-- `REPORT_CHANNEL_ID` - the channel where accomplishment reports are posted.
-- `TRACKING_CHANNEL_ID` - the channel where tracking entries are written.
-- `NOT_PASS_CHANNEL_ID` - the channel where not-pass entries are written at 10:00 AM UTC+8 on weekdays.
-- `TRACKED_MEMBER_IDS` - optional comma-separated Discord user IDs to limit not-pass checks to specific members (for example, your 7 expected members).
+- `DISCORD_PUBLIC_KEY` - the Discord application public key used for request verification.
+- `SERVER_MEMBERS_JSON` - JSON array of fixed server members for `/track missing`, for example `[{"userId":"123","username":"Alice"}]`.
+- `SUPABASE_URL` - optional durable storage backend.
+- `SUPABASE_SERVICE_ROLE_KEY` - optional Supabase service role key.
+- `SUPABASE_TABLE_NAME` - optional Supabase table name, defaults to `submissions`.
+- `SUBMISSIONS_FILE_PATH` - optional local JSON storage path. If unset, local dev uses `./data/submissions.json` and Vercel uses `/tmp`.
 
-## Run
+## Supabase table
+
+If you want stable free storage, create a `submissions` table with these columns:
+
+- `userId` text
+- `username` text
+- `date` text
+- `content` text
+
+Add a unique index on `(userId, date)` so duplicate submissions are blocked at the database level too.
+
+## Slash command schema
+
+Use these definitions when registering commands:
+
+```json
+[
+	{
+		"name": "submit",
+		"description": "Submit an accomplishment",
+		"options": [
+			{
+				"type": 3,
+				"name": "content",
+				"description": "Accomplishment text",
+				"required": true
+			}
+		]
+	},
+	{
+		"name": "track",
+		"description": "Track submissions",
+		"options": [
+			{
+				"type": 1,
+				"name": "submitted",
+				"description": "List users who submitted on a date",
+				"options": [
+					{
+						"type": 3,
+						"name": "date",
+						"description": "YYYY-MM-DD",
+						"required": true
+					}
+				]
+			},
+			{
+				"type": 1,
+				"name": "missing",
+				"description": "List users who did not submit on a date",
+				"options": [
+					{
+						"type": 3,
+						"name": "date",
+						"description": "YYYY-MM-DD",
+						"required": true
+					}
+				]
+			}
+		]
+	}
+]
+```
+
+## Run locally
 
 ```bash
 npm start
 ```
 
-## Railway deployment note
-
-- Railway does not read your local `.env` file from GitHub automatically.
-- Set all variables in Railway Variables: `DISCORD_TOKEN`, `REPORT_CHANNEL_ID`, `TRACKING_CHANNEL_ID`, `NOT_PASS_CHANNEL_ID`, and optional `TRACKED_MEMBER_IDS`.
-- If `TRACKED_MEMBER_IDS` is empty in Railway, the bot will evaluate all eligible non-bot members in the server.
-- Make sure the bot has the Server Members intent enabled in the Discord Developer Portal; otherwise the not-pass check can be incomplete in deployed environments.
+Then send Discord interaction requests to `http://localhost:3000/api/interactions`.
