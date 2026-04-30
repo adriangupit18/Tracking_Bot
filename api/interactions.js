@@ -57,58 +57,19 @@ function readRequestBody(req) {
     return Promise.resolve('');
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const chunks = [];
-    let settled = false;
-
-    const finalize = (callback) => (value) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      cleanup();
-      callback(value);
-    };
-
-    const resolveOnce = finalize(resolve);
-    const rejectOnce = finalize(reject);
-
-    const cleanup = () => {
-      req.off('data', onData);
-      req.off('end', onEnd);
-      req.off('error', onError);
-      req.off('aborted', onAborted);
-      req.off('close', onClose);
-    };
 
     const onData = (chunk) => {
       chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
     };
 
     const onEnd = () => {
-      resolveOnce(Buffer.concat(chunks).toString('utf8'));
-    };
-
-    const onError = (error) => {
-      rejectOnce(error);
-    };
-
-    const onAborted = () => {
-      rejectOnce(new Error('Request was aborted before the body was fully read.'));
-    };
-
-    const onClose = () => {
-      if (!req.readableEnded && chunks.length === 0) {
-        rejectOnce(new Error('Request stream closed before any body was received.'));
-      }
+      resolve(Buffer.concat(chunks).toString('utf8'));
     };
 
     req.on('data', onData);
     req.on('end', onEnd);
-    req.on('error', onError);
-    req.on('aborted', onAborted);
-    req.on('close', onClose);
   });
 }
 
@@ -311,25 +272,25 @@ export const config = {
 };
 
 export default async function handler(req, res) {
+  if (req.method === 'GET') {
+    sendText(res, 200, 'Discord interaction endpoint is running.');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    sendText(res, 405, 'Method not allowed');
+    return;
+  }
+
+  const signature = req.headers['x-signature-ed25519'];
+  const timestamp = req.headers['x-signature-timestamp'];
+
+  if (typeof signature !== 'string' || typeof timestamp !== 'string') {
+    sendText(res, 401, 'Missing Discord signature headers.');
+    return;
+  }
+
   try {
-    if (req.method !== 'POST') {
-      if (req.method === 'GET') {
-        sendText(res, 200, 'Discord interaction endpoint is running.');
-        return;
-      }
-
-      sendText(res, 405, 'Method not allowed');
-      return;
-    }
-
-    const signature = req.headers['x-signature-ed25519'];
-    const timestamp = req.headers['x-signature-timestamp'];
-
-    if (typeof signature !== 'string' || typeof timestamp !== 'string') {
-      sendText(res, 401, 'Missing Discord signature headers.');
-      return;
-    }
-
     const rawBody = await readRequestBody(req);
     const interaction = parseJsonBody(rawBody);
 
@@ -351,16 +312,13 @@ export default async function handler(req, res) {
     const response = await handleInteractionPayload(interaction);
     sendDiscordResponse(res, response);
   } catch (error) {
-    console.error('[interactions] failed to handle request:', error);
+    console.error('[interactions] handler error:', error);
     if (!res.headersSent) {
-      sendDiscordResponse(res, buildDiscordResponse('Internal server error.', { ephemeral: true }));
-      return;
-    }
-
-    try {
-      res.end();
-    } catch {
-      // Ignore secondary response failures.
+      try {
+        sendDiscordResponse(res, buildDiscordResponse('Internal server error.', { ephemeral: true }));
+      } catch (responseError) {
+        console.error('[interactions] failed to send error response:', responseError);
+      }
     }
   }
 }
