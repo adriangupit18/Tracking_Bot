@@ -292,6 +292,12 @@ export default async function handler(req, res) {
 
   try {
     const rawBody = await readRequestBody(req);
+
+    if (!verifyDiscordSignature(signature, timestamp, rawBody)) {
+      sendText(res, 401, 'Invalid request signature.');
+      return;
+    }
+
     const interaction = parseJsonBody(rawBody);
 
     if (!interaction) {
@@ -301,11 +307,6 @@ export default async function handler(req, res) {
 
     if (interaction.type === INTERACTION_TYPE_PING) {
       sendDiscordResponse(res, { type: INTERACTION_TYPE_PING });
-      return;
-    }
-
-    if (!verifyDiscordSignature(signature, timestamp, rawBody)) {
-      sendText(res, 401, 'Invalid request signature.');
       return;
     }
 
