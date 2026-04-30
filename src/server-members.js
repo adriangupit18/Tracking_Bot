@@ -3,10 +3,18 @@ function parseServerMembers(value) {
     return [];
   }
 
-  const parsed = JSON.parse(value);
+  let parsed;
+
+  try {
+    parsed = JSON.parse(value);
+  } catch (error) {
+    console.warn('[server-members] SERVER_MEMBERS_JSON is invalid JSON, using an empty list instead.');
+    return [];
+  }
 
   if (!Array.isArray(parsed)) {
-    throw new Error('SERVER_MEMBERS_JSON must be a JSON array.');
+    console.warn('[server-members] SERVER_MEMBERS_JSON is not an array, using an empty list instead.');
+    return [];
   }
 
   return parsed
