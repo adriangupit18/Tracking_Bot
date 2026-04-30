@@ -34,7 +34,37 @@ function sendText(res, statusCode, text) {
   res.end(text);
 }
 
+function getBodyFromKnownRequestFields(req) {
+  const rawBody = req.rawBody;
+  if (Buffer.isBuffer(rawBody)) {
+    return rawBody.toString('utf8');
+  }
+
+  if (typeof rawBody === 'string') {
+    return rawBody;
+  }
+
+  if (Buffer.isBuffer(req.body)) {
+    return req.body.toString('utf8');
+  }
+
+  if (typeof req.body === 'string') {
+    return req.body;
+  }
+
+  return null;
+}
+
 function readRequestBody(req) {
+  const knownBody = getBodyFromKnownRequestFields(req);
+  if (typeof knownBody === 'string') {
+    return Promise.resolve(knownBody);
+  }
+
+  if (req.readableEnded) {
+    return Promise.resolve('');
+  }
+
   return new Promise((resolve, reject) => {
     const chunks = [];
 
@@ -63,10 +93,12 @@ function verifyDiscordSignature(signature, timestamp, body) {
     return false;
   }
 
+  const normalizedSignature = signature.trim().toLowerCase();
+
   try {
     return nacl.sign.detached.verify(
       Buffer.from(`${timestamp}${body}`),
-      Buffer.from(signature, 'hex'),
+      Buffer.from(normalizedSignature, 'hex'),
       Buffer.from(discordPublicKey, 'hex'),
     );
   } catch {
