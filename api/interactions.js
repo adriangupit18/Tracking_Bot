@@ -5,12 +5,6 @@ import nacl from 'tweetnacl';
 import { SERVER_MEMBERS } from '../src/server-members.js';
 import { addSubmission, getSubmissionsByDate } from '../src/storage.js';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 const INTERACTION_TYPE_PING = 1;
 const INTERACTION_TYPE_APPLICATION_COMMAND = 2;
 const INTERACTION_RESPONSE_CHANNEL_MESSAGE = 4;
@@ -65,16 +59,56 @@ function readRequestBody(req) {
 
   return new Promise((resolve, reject) => {
     const chunks = [];
+    let settled = false;
 
-    req.on('data', (chunk) => {
+    const finalize = (callback) => (value) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      cleanup();
+      callback(value);
+    };
+
+    const resolveOnce = finalize(resolve);
+    const rejectOnce = finalize(reject);
+
+    const cleanup = () => {
+      req.off('data', onData);
+      req.off('end', onEnd);
+      req.off('error', onError);
+      req.off('aborted', onAborted);
+      req.off('close', onClose);
+    };
+
+    const onData = (chunk) => {
       chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
-    });
+    };
 
-    req.on('end', () => {
-      resolve(Buffer.concat(chunks).toString('utf8'));
-    });
+    const onEnd = () => {
+      resolveOnce(Buffer.concat(chunks).toString('utf8'));
+    };
 
-    req.on('error', reject);
+    const onError = (error) => {
+      rejectOnce(error);
+    };
+
+    const onAborted = () => {
+      rejectOnce(new Error('Request was aborted before the body was fully read.'));
+    };
+
+    const onClose = () => {
+      if (!req.readableEnded && chunks.length === 0) {
+        rejectOnce(new Error('Request stream closed before any body was received.'));
+      }
+    };
+
+    req.on('data', onData);
+    req.on('end', onEnd);
+    req.on('error', onError);
+    req.on('aborted', onAborted);
+    req.on('close', onClose);
   });
 }
 
@@ -277,47 +311,56 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    if (req.method === 'GET') {
-      sendText(res, 200, 'Discord interaction endpoint is running.');
+  try {
+    if (req.method !== 'POST') {
+      if (req.method === 'GET') {
+        sendText(res, 200, 'Discord interaction endpoint is running.');
+        return;
+      }
+
+      sendText(res, 405, 'Method not allowed');
       return;
     }
 
-    sendText(res, 405, 'Method not allowed');
-    return;
-  }
+    const signature = req.headers['x-signature-ed25519'];
+    const timestamp = req.headers['x-signature-timestamp'];
 
-  const signature = req.headers['x-signature-ed25519'];
-  const timestamp = req.headers['x-signature-timestamp'];
+    if (typeof signature !== 'string' || typeof timestamp !== 'string') {
+      sendText(res, 401, 'Missing Discord signature headers.');
+      return;
+    }
 
-  if (typeof signature !== 'string' || typeof timestamp !== 'string') {
-    sendText(res, 401, 'Missing Discord signature headers.');
-    return;
-  }
+    const rawBody = await readRequestBody(req);
+    const interaction = parseJsonBody(rawBody);
 
-  const rawBody = await readRequestBody(req);
-  const interaction = parseJsonBody(rawBody);
+    if (!interaction) {
+      sendText(res, 400, 'Invalid interaction payload.');
+      return;
+    }
 
-  if (!interaction) {
-    sendText(res, 400, 'Invalid interaction payload.');
-    return;
-  }
+    if (interaction.type === INTERACTION_TYPE_PING) {
+      sendDiscordResponse(res, { type: INTERACTION_TYPE_PING });
+      return;
+    }
 
-  if (interaction.type === INTERACTION_TYPE_PING) {
-    sendDiscordResponse(res, { type: INTERACTION_TYPE_PING });
-    return;
-  }
+    if (!verifyDiscordSignature(signature, timestamp, rawBody)) {
+      sendText(res, 401, 'Invalid request signature.');
+      return;
+    }
 
-  if (!verifyDiscordSignature(signature, timestamp, rawBody)) {
-    sendText(res, 401, 'Invalid request signature.');
-    return;
-  }
-
-  try {
     const response = await handleInteractionPayload(interaction);
     sendDiscordResponse(res, response);
   } catch (error) {
     console.error('[interactions] failed to handle request:', error);
-    sendDiscordResponse(res, buildDiscordResponse('Internal server error.', { ephemeral: true }));
+    if (!res.headersSent) {
+      sendDiscordResponse(res, buildDiscordResponse('Internal server error.', { ephemeral: true }));
+      return;
+    }
+
+    try {
+      res.end();
+    } catch {
+      // Ignore secondary response failures.
+    }
   }
 }
