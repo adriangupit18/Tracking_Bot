@@ -1,7 +1,5 @@
 import 'dotenv/config';
 
-import { createServer } from 'node:http';
-import { pathToFileURL } from 'node:url';
 import nacl from 'tweetnacl';
 
 import { SERVER_MEMBERS } from '../src/server-members.js';
@@ -86,6 +84,12 @@ function parseJsonBody(body) {
   } catch {
     return null;
   }
+}
+
+function sendDiscordResponse(res, payload) {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(payload));
 }
 
 function verifyDiscordSignature(signature, timestamp, body) {
@@ -266,7 +270,13 @@ async function handleInteractionPayload(interaction) {
   return buildDiscordResponse('Unknown command.', { ephemeral: true });
 }
 
-export async function handler(req, res) {
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     if (req.method === 'GET') {
       sendText(res, 200, 'Discord interaction endpoint is running.');
@@ -286,12 +296,6 @@ export async function handler(req, res) {
   }
 
   const rawBody = await readRequestBody(req);
-
-  if (!verifyDiscordSignature(signature, timestamp, rawBody)) {
-    sendText(res, 401, 'Invalid request signature.');
-    return;
-  }
-
   const interaction = parseJsonBody(rawBody);
 
   if (!interaction) {
@@ -299,26 +303,21 @@ export async function handler(req, res) {
     return;
   }
 
+  if (interaction.type === INTERACTION_TYPE_PING) {
+    sendDiscordResponse(res, { type: INTERACTION_TYPE_PING });
+    return;
+  }
+
+  if (!verifyDiscordSignature(signature, timestamp, rawBody)) {
+    sendText(res, 401, 'Invalid request signature.');
+    return;
+  }
+
   try {
     const response = await handleInteractionPayload(interaction);
-    sendJson(res, 200, response);
+    sendDiscordResponse(res, response);
   } catch (error) {
     console.error('[interactions] failed to handle request:', error);
-    sendJson(res, 200, buildDiscordResponse('Internal server error.', { ephemeral: true }));
+    sendDiscordResponse(res, buildDiscordResponse('Internal server error.', { ephemeral: true }));
   }
 }
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const port = Number(process.env.PORT ?? 3000);
-
-  createServer((req, res) => {
-    handler(req, res).catch((error) => {
-      console.error('[local-server] unhandled error:', error);
-      sendJson(res, 200, buildDiscordResponse('Internal server error.', { ephemeral: true }));
-    });
-  }).listen(port, () => {
-    console.log(`Discord interaction endpoint listening on http://localhost:${port}/api/interactions`);
-  });
-}
-
-export default handler;
